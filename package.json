@@ -1,0 +1,26 @@
+{
+  "name": "server-upload-download",
+  "version": "1.0.0",
+  "description": "暂时只支持ftp上传文件，下载文件",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jen0/server-upload-download.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Jen0/server-upload-download/issues"
+  },
+  "homepage": "https://github.com/Jen0/server-upload-download#readme",
+  "dependencies": {
+    "chalk": "^4.0.0",
+    "fs-extra": "^9.0.0",
+    "ftp": "^0.3.10",
+    "ora": "^4.0.4"
+  }
+}
