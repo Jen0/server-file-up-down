@@ -3,27 +3,27 @@
 
 **Table of Contents** _generated with [DocToc](https://github.com/thlorenz/doctoc)_
 
-- [server-upload-download](#server-upload-download)
+- [server-upload-down](#server-upload-down)
   - [安装](#%e5%ae%89%e8%a3%85)
   - [使用](#%e4%bd%bf%e7%94%a8)
   - [参数配置](#%e5%8f%82%e6%95%b0%e9%85%8d%e7%bd%ae)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-# server-upload-download
+# server-upload-down
 
 > 目前仅支持 `ftp` 上传/下载
 
 ## 安装
 
 ```bash
-npm i server-upload-download
+npm i server-upload-down
 ```
 
 ## 使用
 
 ```js
-const { FTP } = require("server-upload-download");
+const { FTP } = require("server-upload-down");
 
 // for example
 (async () => {
