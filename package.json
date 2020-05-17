@@ -1,6 +1,6 @@
 {
   "name": "server-upload-down",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "暂时只支持ftp上传文件，下载文件",
   "main": "index.js",
   "scripts": {

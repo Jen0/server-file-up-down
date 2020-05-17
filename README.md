@@ -44,6 +44,9 @@ const { FTP } = require("server-upload-download");
     excludeFolder: ["img"],
     remotePath: "js",
     clean: false,
+    cleanExcludeExt: "",
+    cleanExcludeFolder: "",
+    cleanExcludeFiles: "",
   };
   const ftp = new Ftp(connectionOptions, options);
 
@@ -58,10 +61,13 @@ const { FTP } = require("server-upload-download");
 
 ## 参数配置
 
-|     属性      |        类型        |            默认值            | 必填 | 上传说明                                                                                    | 下载说明               |
-| :-----------: | :----------------: | :--------------------------: | :--: | ------------------------------------------------------------------------------------------- | ---------------------- |
-|  targetPath   |       string       | 本地项目根目录下的`dist`目录 |  是  | 上传本地项目根目录`dist`目录下的所有文件，必须是绝对路径                                    |                        | 下载至本地的目录，必须是绝对路径 |
-|  remotePath   |       string       |          远程根目录          |  否  | 远程目录，填写相对路径                                                                      | 远程目录，填写相对路径 |
-|  excludeExt   | string \| string[] |                              |  否  | `string`: 过滤一个后缀(e.g. 'zip')，`string[]`: 过滤多个后缀(e.g. ['zip','txt'])            | 同左                   |  |
-| excludeFolder | string \| string[] |                              |  否  | `string`: 过滤一个目录(e.g. 'folder')，`string[]`: 过滤多个目录(e.g. ['folder1','folder2']) | 同左                   |
-|     clean     |      boolean       |            false             |  否  | 上传前是否需要清理远程目录                                                                  |                        |
+|        属性        |        类型        |            默认值            | 必填 | 上传说明                                                                                                                          | 下载说明               |
+| :----------------: | :----------------: | :--------------------------: | :--: | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+|     targetPath     |       string       | 本地项目根目录下的`dist`目录 |  是  | 上传本地项目根目录`dist`目录下的所有文件，必须是绝对路径                                                                          |                        | 下载至本地的目录，必须是绝对路径 |
+|     remotePath     |       string       |          远程根目录          |  否  | 远程目录，填写相对路径                                                                                                            | 远程目录，填写相对路径 |
+|     excludeExt     | string \| string[] |                              |  否  | 上传文件，指定排除的文件后缀，`string`: 过滤一个后缀(e.g. 'zip')，`string[]`: 过滤多个后缀(e.g. ['zip','txt'])                    | 同左                   |
+|   excludeFolder    | string \| string[] |                              |  否  | 上传文件，指定排除的文件夹，`string`: 过滤一个目录(e.g. 'folder')，`string[]`: 过滤多个目录(e.g. ['folder1','folder2'])           | 同左                   |
+|       clean        |      boolean       |            false             |  否  | 上传前是否需要清理远程目录                                                                                                        |                        |
+|  cleanExcludeExt   | string \| string[] |            false             |  否  | 清理远程目录，排除后缀，格式同参数`excludeExt`                                                                                    |                        |
+| cleanExcludeFolder | string \| string[] |            false             |  否  | 清理远程目录，排除文件夹，格式同参数`excludeFolder`                                                                               |                        |
+| cleanExcludeFiles  | string \| string[] |            false             |  否  | 清理远程目录，指定排除的文件名，`string`: 过滤一个文件(e.g. 'test.txt')，`string[]`: 过滤多个文件(e.g. ['test1.txt','test2.txt']) |                        |
