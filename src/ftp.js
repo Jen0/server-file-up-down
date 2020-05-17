@@ -27,59 +27,6 @@ const operationTypeEnums = {
 };
 
 /**
- * 上传文件至ftp服务器
- */
-const uploadFileToFtpServer = function (ftp, file, options) {
-  return new Promise((resolve, reject) => {
-    const { targetPath, remotePath } = options;
-    ftp.mkdir(`${remotePath}/${file.remoteDir}`, true, (err) => {
-      err && reject(err);
-      ftp.put(
-        path.resolve(targetPath, file.fileRelativePath),
-        // file.buffer,
-        `${remotePath}/${formatSymbol(file.fileRelativePath)}`,
-        function (err) {
-          err && reject(err);
-          resolve();
-        }
-      );
-    });
-  });
-};
-
-/**
- * 下载服务器文件至本地
- */
-const downloadFileToFtpServer = (ftp, file, options) => {
-  return new Promise((resolve, reject) => {
-    const { targetPath, remotePath } = options;
-    const remoteDir =
-      file.remoteDir.indexOf("/") === 0
-        ? file.remoteDir.substr(1)
-        : file.remoteDir;
-    ftp.cwd(`/${remoteDir}`, (e, currentDir) => {
-      ftp.get(`/${remoteDir}/${file.fileName}`, (err, rs) => {
-        err && reject(err);
-        if (rs) {
-          // 服务器指定路径开始下载
-          fs.ensureDirSync(path.resolve(targetPath, file.fileRelativePath));
-          let ws = fs.createWriteStream(
-            path.resolve(targetPath, file.fileRelativePath, file.fileName)
-          );
-          // 服务器根目录开始下载
-          // fs.ensureDirSync(path.resolve(targetPath, remoteDir));
-          // let ws = fs.createWriteStream(
-          //   path.resolve(targetPath, remoteDir, file.fileName)
-          // );
-          rs.pipe(ws);
-          resolve();
-        }
-      });
-    });
-  });
-};
-
-/**
  * 删除远程文件
  * @param {Object} ftp
  * @param {String} filePath
@@ -121,6 +68,116 @@ const findFiles = (ftp, folderPath) => {
   });
 };
 
+/**
+ * 创建远程文件夹
+ * @param {Object} ftp
+ * @param {String} remotePath
+ */
+const mkdir = (ftp, remotePath) => {
+  return new Promise((resolve, reject) => {
+    ftp.mkdir(remotePath, true, (err) => {
+      err && reject(err);
+      resolve();
+    });
+  });
+};
+
+/**
+ * 上传文件
+ * @param {Object} ftp
+ * @param {String} localPath
+ * @param {String} remotePath
+ */
+const putFile = (ftp, localPath, remotePath) => {
+  return new Promise((resolve, reject) => {
+    ftp.put(localPath, remotePath, (err) => {
+      err && reject(err);
+      resolve();
+    });
+  });
+};
+
+/**
+ * 切换远程工作目录
+ * @param {Object} ftp
+ * @param {String} remotePath
+ */
+const cwd = (ftp, remotePath) => {
+  return new Promise((resolve, reject) => {
+    ftp.cwd(remotePath, (err, currentDir) => {
+      err && reject(err);
+      resolve(currentDir);
+    });
+  });
+};
+
+/**
+ * 获取远程文件流
+ * @param {Object} ftp
+ * @param {String} remotePath
+ */
+const getStream = (ftp, remotePath) => {
+  return new Promise((resolve, reject) => {
+    ftp.get(remotePath, (err, rs) => {
+      err && reject(err);
+      resolve(rs);
+    });
+  });
+};
+
+/**
+ * 上传文件至ftp服务器
+ */
+const uploadFileToFtpServer = function (ftp, file, options) {
+  return new Promise(async (resolve, reject) => {
+    const { targetPath, remotePath } = options;
+    try {
+      await mkdir(ftp, `${remotePath}/${file.remoteDir}`);
+      await putFile(
+        ftp,
+        path.resolve(targetPath, file.fileRelativePath),
+        `${remotePath}/${formatSymbol(file.fileRelativePath)}`
+      );
+      resolve();
+    } catch (err) {
+      console.log("\n", file);
+      reject(err);
+    }
+  });
+};
+
+/**
+ * 下载服务器文件至本地
+ */
+const downloadFileToFtpServer = (ftp, file, options) => {
+  return new Promise(async (resolve, reject) => {
+    const { targetPath, remotePath } = options;
+    const remoteDir =
+      file.remoteDir.indexOf("/") === 0
+        ? file.remoteDir.substr(1)
+        : file.remoteDir;
+    try {
+      const currentDir = await cwd(ftp, `/${remoteDir}`);
+      const rs = await getStream(ftp, `/${remoteDir}/${file.fileName}`);
+      if (rs) {
+        // 服务器指定路径开始下载
+        fs.ensureDirSync(path.resolve(targetPath, file.fileRelativePath));
+        let ws = fs.createWriteStream(
+          path.resolve(targetPath, file.fileRelativePath, file.fileName)
+        );
+        // 服务器根目录开始下载
+        // fs.ensureDirSync(path.resolve(targetPath, remoteDir));
+        // let ws = fs.createWriteStream(
+        //   path.resolve(targetPath, remoteDir, file.fileName)
+        // );
+        rs.pipe(ws);
+      }
+      resolve();
+    } catch (err) {
+      err && reject(err);
+    }
+  });
+};
 /**
  * 默认配置
  */
@@ -306,7 +363,6 @@ class ServerFileUpDown {
             throw new Error(`${targetPath} 是空目录，没有文件可上传！`);
           }
           clean && (await this.rmRemoteDir());
-
           this.progress.start();
           await this.uploadMultipleFileToFtpServer();
           // 结束加载图标
@@ -336,38 +392,39 @@ class ServerFileUpDown {
     const { excludeExt, excludeFolder, remotePath, targetPath } = this.options;
     const collectFiles = [];
     const collect = (currentDir = "") => {
-      return new Promise((resolve, reject) => {
-        this.ftp.list(
-          `${remotePath}/${currentDir}`,
-          false,
-          async (err, files) => {
-            err && reject(err);
-            for (let i = 0; i < files.length; i++) {
-              const f = files[i];
-              const fileRelativePath = currentDir
-                ? `${currentDir}/${f.name}`
-                : f.name;
-              if (f.type === "-") {
-                // 不需要收集的文件
-                if (!isInclude(path.extname(f.name).substr(1), excludeExt)) {
-                  collectFiles.push({
-                    remoteDir: currentDir
-                      ? `${remotePath}/${currentDir}`
-                      : remotePath || "/",
-                    fileName: f.name,
-                    fileRelativePath: currentDir,
-                  });
-                }
-              } else if (f.type === "d" && f.name.indexOf(".") === -1) {
-                // 不需要收集的文件夹
-                if (!isInclude(f.name, excludeFolder)) {
-                  await collect(fileRelativePath);
-                }
+      return new Promise(async (resolve, reject) => {
+        try {
+          const files = await findFiles(
+            this.ftp,
+            `${remotePath}/${currentDir}`
+          );
+          for (let i = 0; i < files.length; i++) {
+            const f = files[i];
+            const fileRelativePath = currentDir
+              ? `${currentDir}/${f.name}`
+              : f.name;
+            if (f.type === "-") {
+              // 不需要收集的文件
+              if (!isInclude(path.extname(f.name).substr(1), excludeExt)) {
+                collectFiles.push({
+                  remoteDir: currentDir
+                    ? `${remotePath}/${currentDir}`
+                    : remotePath || "/",
+                  fileName: f.name,
+                  fileRelativePath: currentDir,
+                });
+              }
+            } else if (f.type === "d" && f.name.indexOf(".") === -1) {
+              // 不需要收集的文件夹
+              if (!isInclude(f.name, excludeFolder)) {
+                await collect(fileRelativePath);
               }
             }
-            resolve();
           }
-        );
+          resolve();
+        } catch (err) {
+          err && reject(err);
+        }
       });
     };
     await collect();
