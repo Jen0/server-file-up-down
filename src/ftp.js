@@ -11,13 +11,12 @@ chalk.level = Math.max(chalk.level, 1);
  * @param {String|Array} resources
  */
 const isInclude = (str, resources) => {
-  if (str && resources) {
-    if (Array.isArray(resources)) {
-      return resources.includes(str);
-    }
-    return str === resources;
+  if (!str || !resources) return false;
+  if (Array.isArray(resources)) {
+    if (resources.length === 0) return false;
+    return resources.includes(str);
   }
-  return true;
+  return str === resources;
 };
 
 const formatSymbol = (str) => str.replace(/\\/g, "/");
@@ -62,7 +61,6 @@ const downloadFileToFtpServer = (ftp, file, options) => {
       ftp.get(`/${remoteDir}/${file.fileName}`, (err, rs) => {
         err && reject(err);
         if (rs) {
-          // console.log(remoteDir, file.fileRelativePath, file.fileName);
           // 服务器指定路径开始下载
           fs.ensureDirSync(path.resolve(targetPath, file.fileRelativePath));
           let ws = fs.createWriteStream(
@@ -82,14 +80,59 @@ const downloadFileToFtpServer = (ftp, file, options) => {
 };
 
 /**
+ * 删除远程文件
+ * @param {Object} ftp
+ * @param {String} filePath
+ */
+const rmFile = (ftp, filePath) => {
+  return new Promise((resolve, reject) => {
+    ftp.delete(filePath, (err) => {
+      err && reject(err);
+      resolve();
+    });
+  });
+};
+
+/**
+ * 删除远程文件夹
+ * @param {Object} ftp
+ * @param {String} filePath
+ */
+const rmFolder = (ftp, folderPath) => {
+  return new Promise((resolve, reject) => {
+    ftp.rmdir(folderPath, true, (err) => {
+      err && reject(err);
+      resolve();
+    });
+  });
+};
+
+/**
+ * 查看远程指定目录下的文件、文件夹
+ * @param {Object} ftp
+ * @param {String} filePath
+ */
+const findFiles = (ftp, folderPath) => {
+  return new Promise((resolve, reject) => {
+    ftp.list(folderPath, false, (err, files) => {
+      err && reject(err);
+      resolve(files);
+    });
+  });
+};
+
+/**
  * 默认配置
  */
 const defaultOptions = {
   targetPath: path.resolve(process.cwd(), "dist"), // 本地目录
   remotePath: "", // 远程目录，默认根目录
-  excludeExt: [], // 排除文件后缀 ['zip']
-  excludeFolder: [], // 排除文件夹 ['folder']
+  excludeExt: "", // 排除文件后缀 ['zip']
+  excludeFolder: "", // 排除文件夹 ['folder']
   clean: false, // 是否需要清理远程目录，默认false
+  cleanExcludeExt: "",
+  cleanExcludeFolder: "",
+  cleanExcludeFiles: "",
 };
 
 class ServerFileUpDown {
@@ -103,11 +146,7 @@ class ServerFileUpDown {
    * @param {Object} options 该插件参数配置
    */
   constructor(connectOption, options) {
-    this.options = {
-      ...defaultOptions,
-      ...options,
-    };
-
+    this.options = Object.assign({}, defaultOptions, options);
     // 创建实例
     this.ftp = ServerFileUpDown.createInstance();
     // 连接服务器
@@ -125,26 +164,83 @@ class ServerFileUpDown {
   /**
    * 清理远程目录
    */
-  rmRemoteDir() {
-    return new Promise((resolve, reject) => {
-      // 出现加载图标
-      const spinner = ora({
-        text: chalk.bold.greenBright(`正在清理远程目录，请耐心等待...`),
-        spinner: Spinners.bouncingBall,
-      });
-      spinner.start();
-      const { remotePath } = this.options;
-      this.ftp.rmdir(remotePath, true, (err) => {
-        if (err) {
-          spinner.fail(
-            chalk.redBright(
-              `清理远程目录失败！原因：不存在${remotePath}该目录\r\n`
-            )
-          );
-        } else spinner.succeed(chalk.greenBright(`清理远程目录成功！\r\n`));
+  async rmRemoteDir() {
+    // 出现加载图标
+    const spinner = ora({
+      text: chalk.bold.greenBright(`正在清理远程目录，请耐心等待...`),
+      spinner: Spinners.bouncingBall,
+    });
+    spinner.start();
+    const {
+      remotePath,
+      targetPath,
+      cleanExcludeExt,
+      cleanExcludeFolder,
+      cleanExcludeFiles,
+    } = this.options;
+    const recursiveRmDir = (currentDir = "") => {
+      return new Promise(async (resolve, reject) => {
+        const currentRemotePath = `${remotePath}/${currentDir}`;
+        // 删除文件夹
+        try {
+          await rmFolder(this.ftp, currentRemotePath);
+        } catch (e) {
+          let files = [];
+          // 文件夹内有权限，遍历文件
+          try {
+            files = await findFiles(this.ftp, currentRemotePath);
+          } catch (notFoundErr) {
+            // 文件夹不存在
+            // reject(notFoundErr)
+            spinner.fail(
+              chalk.redBright(
+                `清理远程目录失败！原因：不存在${remotePath}该目录`
+                // 2. 没有权限删除其中有些文件`
+              )
+            );
+          }
+          for (let i = 0; i < files.length; i++) {
+            const f = files[i];
+            const fileRelativePath = currentDir
+              ? `${currentDir}/${f.name}`
+              : f.name;
+            const remoteFullPath = `${remotePath}/${fileRelativePath}`;
+            // 只能删除有操作权限的文件
+            if (f.type === "-" && f.rights.user.indexOf("x") !== -1) {
+              // 不需要删除的文件（判断是否排除文件，还有排除后缀）
+              if (
+                !(
+                  isInclude(path.extname(f.name), cleanExcludeFiles) ||
+                  isInclude(path.extname(f.name).substr(1), cleanExcludeExt)
+                )
+              ) {
+                await rmFile(this.ftp, remoteFullPath);
+              }
+            } else if (f.type === "d" && f.name.indexOf(".") !== 0) {
+              // 不需要删除的文件夹
+              if (!isInclude(f.name, cleanExcludeFolder)) {
+                await recursiveRmDir(fileRelativePath);
+              }
+            }
+          }
+        }
         resolve();
       });
-    });
+    };
+    await recursiveRmDir();
+    spinner.succeed(chalk.greenBright(`清理远程目录成功！\r\n`));
+    // this.ftp.rmdir(remotePath, true, (err) => {
+    //   if (err) {
+    //     spinner.fail(
+    //       chalk.redBright(
+    //         `清理远程目录失败！原因：
+    //           1. 不存在${remotePath}该目录
+    //           2. 没有权限删除其中有些文件`
+    //         )
+    //         );
+    //   } else spinner.succeed(chalk.greenBright(`清理远程目录成功！\r\n`));
+    //   resolve();
+    // });
   }
   /**
    * 下载文件
@@ -237,11 +333,10 @@ class ServerFileUpDown {
    * 递归收集一个文件夹中的所有File
    */
   async recursiveCollectDownloadFile() {
-    const { excludeExt, excludeFolder, targetPath } = this.options;
+    const { excludeExt, excludeFolder, remotePath, targetPath } = this.options;
     const collectFiles = [];
     const collect = (currentDir = "") => {
       return new Promise((resolve, reject) => {
-        const { remotePath } = this.options;
         this.ftp.list(
           `${remotePath}/${currentDir}`,
           false,
