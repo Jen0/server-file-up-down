@@ -1,6 +1,6 @@
 {
   "name": "server-upload-down",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "暂时只支持ftp上传文件，下载文件",
   "main": "index.js",
   "scripts": {
@@ -21,6 +21,7 @@
     "chalk": "^4.0.0",
     "fs-extra": "^9.0.0",
     "ftp": "^0.3.10",
-    "ora": "^4.0.4"
+    "ora": "^4.0.4",
+    "progress": "^2.0.3"
   }
 }
