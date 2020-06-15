@@ -1,6 +1,6 @@
 {
   "name": "server-upload-down",
-  "version": "1.0.3",
+  "version": "1.0.6",
   "description": "暂时只支持ftp上传文件，下载文件",
   "main": "index.js",
   "scripts": {
@@ -10,7 +10,11 @@
     "type": "git",
     "url": "git+https://github.com/Jen0/server-upload-down.git"
   },
-  "keywords": [],
+  "keywords": [
+    "ftp",
+    "upload",
+    "download"
+  ],
   "author": "",
   "license": "ISC",
   "bugs": {

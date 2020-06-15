@@ -463,19 +463,19 @@ class ServerFileUpDown {
    */
   async circleExecute(file, executiveFn, errorFlag) {
     // 是否是原来的间隔时间
-    const isOriginPasvTimeout =
-      this.connectOption.pasvTimeout == this.originPasvTimeout;
+    // const isOriginPasvTimeout =
+    //   this.connectOption.pasvTimeout == this.originPasvTimeout;
 
     // 超时，或者 (没有超时并且不是原来的间隔时间)
-    if (errorFlag || (!errorFlag && !isOriginPasvTimeout)) {
-      // 时间延长2倍，重新连接
-      if (errorFlag) {
-        this.connectOption.pasvTimeout = 2 * this.connectOption.pasvTimeout;
-      }
-      // 如果不是原始的间隔时间，就重新初始化连接
-      else {
-        this.connectOption.pasvTimeout = this.originPasvTimeout;
-      }
+    // if (errorFlag || (!errorFlag && !isOriginPasvTimeout)) {
+    // 如果不是原始的间隔时间，就重新初始化连接
+    // else {
+    //   this.connectOption.pasvTimeout = this.originPasvTimeout;
+    // }
+    // }
+
+    // 时间延长2倍，重新连接
+    if (errorFlag) {
       this.connectOption.pasvTimeout = 2 * this.connectOption.pasvTimeout;
       await reConnectFtp(this.connectOption);
     }
